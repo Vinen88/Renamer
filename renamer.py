@@ -1,5 +1,5 @@
 from sys import argv
-from os import rename, listdir
+from os import rename, listdir, path
 import re
 
 def main():
@@ -10,45 +10,55 @@ def main():
     name_list = []
     regexp = re.compile(r'S\d\d[\s.-]?E\d\d')
     regex_TG = re.compile(r'\[?\d?\d[xX]\d\d\]?')
+    media_regex = re.compile(r'^.*\.(mov|wmv|flv|mp4|avi|mkv)$')
     for file in listdir(directory):
+        new_name = None
         if file == argv[0]:
             continue
         #TODO: use regex to rename so it works on more than just dexter
-        
+        if not media_regex.search(file):
+            print(f"non-media file - {file}")
+            continue
         if regexp.search(file):
-            print("Found correct formating for: " + file)
+            print(f"Found correct formating for: {file}")
             continue
         if regex_TG.search(file):
             new_name = rename_topgear(file)
-        #if "Top Gear" in file:
-        #    new_name = rename_topgear(file)
-        if "Dexter" in file:
+        elif "Dexter" in file:
             new_name = rename_dexter(file)
-        name_list.append([file, new_name]) # type: ignore
-        #rename(file, new_name)
-    if checkprint(name_list):
-        batch_rename(name_list)
-    else:
-        print("Exiting!")
+        if name_list is not None:
+            name_list.append([file, new_name]) 
+    checkprint(name_list, directory)
         
-def batch_rename(name_list):
+def batch_rename(name_list, dir):
     for item in name_list:
-        rename(item[0], item[1])
+        rename(path.join(dir, item[0]), path.join(dir, item[1]))
     print("successfully finished")
     
-def checkprint(name_list):
+def checkprint(name_list, dir):
     for item in name_list:
         print(item)
     test = input("does everything look right? (y/n)? ")
     if test.lower() == 'y':
-        return True
+        batch_rename(name_list, dir)
     elif test.lower() == 'n':
-        for i in range(len(name_list)):
-            print(i, name_list[i])
+        while True:
+            for i in range(len(name_list)):
+                print(i, name_list[i])
+            wrong = input("Enter wrong indicies(eg, 1 3 8 10)(y if all are correct): ")
+            if wrong.lower() == 'y':
+                break
+            if wrong is not None:
+                wrong = wrong.split()
+                wrong.sort()
+                wrong = wrong[::-1]
+                print(f"removing {wrong} indicies")
+                for ind in wrong:
+                    del name_list[int(ind)]
+        batch_rename(name_list, dir)
+            
         
-        wrong = input("Enter wrong indicies (eg, 1 3 8 10): ")
-        wrong = wrong.split().sort()[::-1] # type: ignore
-        #TODO: remove wrong values from list
+        
     
 def rename_dexter(file):
     file_holder = file.split()
@@ -56,9 +66,6 @@ def rename_dexter(file):
         file_holder[2] = 'S0'+file_holder[2]
     else: 
         file_holder[2] = 'S'+file_holder[2]
-    # if int(file_holder[4]) < 10:
-    #     file_holder[4] = 'E0'+file_holder[4]
-    # else:
     file_holder[4] = 'E'+file_holder[4]
     file_holder[2] = file_holder[2] + file_holder[4]
     file_holder.pop(4)
@@ -69,7 +76,6 @@ def rename_dexter(file):
 
 def rename_topgear(file):
     values = re.findall(r'\[?\d?\d[xX]\d\d\]?', file)
-    print(values[0])
     values[0] = values[0].strip('[]').lower()
     new_values = values[0].split("x")
     final = 'S'+new_values[0]+'E'+new_values[1]
